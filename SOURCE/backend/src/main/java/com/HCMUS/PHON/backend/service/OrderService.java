@@ -10,9 +10,11 @@ import com.HCMUS.PHON.backend.model.Cart;
 import com.HCMUS.PHON.backend.model.CartItem;
 import com.HCMUS.PHON.backend.model.Order;
 import com.HCMUS.PHON.backend.model.OrderItem;
+import com.HCMUS.PHON.backend.model.Products;
 import com.HCMUS.PHON.backend.model.Users;
 import com.HCMUS.PHON.backend.repository.CartRepo;
 import com.HCMUS.PHON.backend.repository.OrderRepo;
+import com.HCMUS.PHON.backend.repository.ProductRepo;
 import com.HCMUS.PHON.backend.repository.UserRepo;
 
 import jakarta.transaction.Transactional;
@@ -22,6 +24,7 @@ public class OrderService {
     @Autowired private CartRepo cartRepo;
     @Autowired private OrderRepo orderRepo;
     @Autowired private UserRepo userRepo;
+    @Autowired private ProductRepo productRepo;
 
     @Transactional
     public Optional<Order> createOrder(Long userId, String phoneNumber, String address, String paymentMethod){
@@ -46,6 +49,15 @@ public class OrderService {
         order.setTotalAmount(cart.getTotalAmount());
 
         for (CartItem cartItem : cart.getItems()){
+            Products product = cartItem.getProduct();
+
+            if (product.getQuantity() < cartItem.getQuantity()){
+                throw new RuntimeException("Not enough stock for product: " + product.getName());
+            }
+
+            product.setQuantity(product.getQuantity() - cartItem.getQuantity());
+            productRepo.save(product);
+            
             OrderItem orderItem = new OrderItem();
 
             orderItem.setOrder(order);

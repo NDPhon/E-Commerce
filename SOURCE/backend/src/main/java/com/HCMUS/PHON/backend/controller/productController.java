@@ -6,19 +6,10 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.DeleteMapping;
-// import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-// import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.HCMUS.PHON.backend.dto.ApiResponseDTO;
 import com.HCMUS.PHON.backend.model.Products;
 import com.HCMUS.PHON.backend.service.CloudinaryService;
 import com.HCMUS.PHON.backend.service.ProductService;
@@ -33,8 +24,12 @@ public class ProductController {
     @Autowired
     private CloudinaryService cloudinaryService;
 
+    private <T> ResponseEntity<ApiResponseDTO<T>> buildResponse(int code, String message, T data) {
+        return ResponseEntity.status(code).body(new ApiResponseDTO<>(code, message, data));
+    }
+
     @PutMapping("/update")
-    public ResponseEntity<Products> updateProduct(@RequestParam Long id,
+    public ResponseEntity<ApiResponseDTO<Products>> updateProduct(@RequestParam Long id,
             @RequestParam String name,
             @RequestParam String description,
             @RequestParam List<MultipartFile> files,
@@ -44,10 +39,11 @@ public class ProductController {
             @RequestParam String brand) {
 
         List<String> urlImage = new ArrayList<>();
-        for (MultipartFile file: files){
+        for (MultipartFile file : files) {
             String url = cloudinaryService.uploadFile(file);
             urlImage.add(url);
-        }        
+        }
+
         Products updatedProduct = new Products();
         updatedProduct.setId(id);
         updatedProduct.setName(name);
@@ -60,15 +56,14 @@ public class ProductController {
 
         Products product = productService.updateProduct(updatedProduct);
         if (product != null) {
-            return ResponseEntity.ok(product);
+            return buildResponse(HttpStatus.OK.value(), "Product updated successfully", product);
         } else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            return buildResponse(HttpStatus.NOT_FOUND.value(), "Product not found", null);
         }
     }
-    
-    
+
     @PostMapping("/create")
-    public ResponseEntity<Products> createProduct(@RequestParam String name,
+    public ResponseEntity<ApiResponseDTO<Products>> createProduct(@RequestParam String name,
             @RequestParam String description,
             @RequestParam List<MultipartFile> files,
             @RequestParam double price,
@@ -77,10 +72,11 @@ public class ProductController {
             @RequestParam String brand) {
 
         List<String> urlImage = new ArrayList<>();
-        for (MultipartFile file: files){
+        for (MultipartFile file : files) {
             String url = cloudinaryService.uploadFile(file);
             urlImage.add(url);
-        }        
+        }
+
         Products newProduct = new Products();
         newProduct.setName(name);
         newProduct.setDescription(description);
@@ -91,69 +87,66 @@ public class ProductController {
         newProduct.setBrand(brand);
 
         Products createdProduct = productService.createProduct(newProduct);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdProduct);
+        return buildResponse(HttpStatus.CREATED.value(), "Product created successfully", createdProduct);
     }
 
     @GetMapping("/all")
-    public ResponseEntity<List<Products>> getAllProducts() {
-        return ResponseEntity.ok(productService.getAllProducts());
+    public ResponseEntity<ApiResponseDTO<List<Products>>> getAllProducts() {
+        List<Products> products = productService.getAllProducts();
+        return buildResponse(HttpStatus.OK.value(), "Success", products);
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<Products>> getProductByName(@RequestParam String keyword) {
-        List<Products> product = productService.findProductsByName(keyword);
-        if (!product.isEmpty()) {
-            return ResponseEntity.ok(product);
+    public ResponseEntity<ApiResponseDTO<List<Products>>> getProductByName(@RequestParam String keyword) {
+        List<Products> products = productService.findProductsByName(keyword);
+        if (!products.isEmpty()) {
+            return buildResponse(HttpStatus.OK.value(), "Success", products);
         } else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            return buildResponse(HttpStatus.NOT_FOUND.value(), "No products found", null);
         }
     }
 
     @GetMapping("/filtering")
-    public ResponseEntity<List<Products>> getFilteredProductByCategory(@RequestParam List<String> categories){
-        List<Products> product = productService.filterProductByCategory(categories);
-        if (!product.isEmpty()) {
-            return ResponseEntity.ok(product);
+    public ResponseEntity<ApiResponseDTO<List<Products>>> getFilteredProductByCategory(@RequestParam List<String> categories) {
+        List<Products> products = productService.filterProductByCategory(categories);
+        if (!products.isEmpty()) {
+            return buildResponse(HttpStatus.OK.value(), "Success", products);
         } else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            return buildResponse(HttpStatus.NOT_FOUND.value(), "No products found for categories", null);
         }
     }
+
     @GetMapping("/price")
-    public ResponseEntity<List<Products>> getFilteredProductByPriceRange(
+    public ResponseEntity<ApiResponseDTO<List<Products>>> getFilteredProductByPriceRange(
             @RequestParam double minPrice,
-            @RequestParam double maxPrice){
-        
+            @RequestParam double maxPrice) {
+
         List<Products> products = productService.filterProductByPriceRange(minPrice, maxPrice);
         if (!products.isEmpty()) {
-            return ResponseEntity.ok(products);
+            return buildResponse(HttpStatus.OK.value(), "Success", products);
         } else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            return buildResponse(HttpStatus.NOT_FOUND.value(), "No products found in price range", null);
         }
     }
 
     @GetMapping("/get/{id}")
-    public ResponseEntity<Products> getProductById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponseDTO<Products>> getProductById(@PathVariable Long id) {
         Products product = productService.getProductById(id);
         if (product != null) {
-            return ResponseEntity.ok(product);
+            return buildResponse(HttpStatus.OK.value(), "Success", product);
         } else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            return buildResponse(HttpStatus.NOT_FOUND.value(), "Product not found", null);
         }
     }
 
     @DeleteMapping("/delete/{id}")
-    public ResponseEntity<String> deleteProductById(@PathVariable Long id){
-        if (productService.getProductById(id) == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Product not found");
-        }
-        else{
+    public ResponseEntity<ApiResponseDTO<Object>> deleteProductById(@PathVariable Long id) {
+        Products product = productService.getProductById(id);
+        if (product == null) {
+            return buildResponse(HttpStatus.NOT_FOUND.value(), "Product not found", null);
+        } else {
             productService.deleteProduct(id);
-            return ResponseEntity.ok("Delete successfully");
+            return buildResponse(HttpStatus.OK.value(), "Product deleted successfully", null);
         }
     }
-
-
-    
-
-    
 }
